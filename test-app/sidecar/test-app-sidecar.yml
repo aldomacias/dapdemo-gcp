@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-app-sidecar
+  labels:
+    app: test-app-sidecar
+spec:
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: test-app-sidecar
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-app-sidecar
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: test-app-sidecar
+  name: test-app-sidecar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-app-sidecar
+  template:
+    metadata:
+      labels:
+        app: test-app-sidecar
+    spec:
+      serviceAccountName: test-app-sidecar
+      containers:
+      - image: {{ TEST_APP_DOCKER_IMAGE }}
+        imagePullPolicy: Always
+        name: test-app-sidecar
+        ports:
+        - containerPort: 8080
+        env:
+          - name: CONJUR_VERSION
+            value: '5'
+          - name: CONJUR_APPLIANCE_URL
+            value: "{{ CONJUR_APPLIANCE_URL }}"
+          - name: CONJUR_ACCOUNT
+            value: {{ CONJUR_ACCOUNT }}
+          - name: CONJUR_AUTHN_TOKEN_FILE
+            value: /run/conjur/access-token
+          - name: CONJUR_SSL_CERTIFICATE
+            valueFrom:
+              configMapKeyRef:
+                name: conjur-cert
+                key: ssl-certificate
+        volumeMounts:
+          - mountPath: /run/conjur
+            name: conjur-access-token
+            readOnly: true
+      - image: cyberark/conjur-kubernetes-authenticator
+        imagePullPolicy: Always
+        name: authenticator
+        env:
+          - name: CONJUR_VERSION
+            value: '5'
+          - name: CONTAINER_MODE
+            value: sidecar
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: CONJUR_AUTHN_URL
+            value: "{{ CONJUR_AUTHN_URL }}"
+          - name: CONJUR_ACCOUNT
+            value: "{{ CONJUR_ACCOUNT }}"
+          - name: CONJUR_AUTHN_LOGIN
+            value: "host/conjur/authn-k8s/{{ DAP_AUTHN_K8S_BRANCH }}/apps/{{ TEST_APP_SIDECAR_NS }}/service_account/test-app-sidecar"
+          - name: CONJUR_SSL_CERTIFICATE
+            valueFrom:
+              configMapKeyRef:
+                name: conjur-cert
+                key: ssl-certificate
+        volumeMounts:
+          - mountPath: /run/conjur
+            name: conjur-access-token
+      volumes:
+        - name: conjur-access-token
+          emptyDir:
+            medium: Memory

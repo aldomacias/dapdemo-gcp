@@ -1,0 +1,60 @@
+# conjur-role.yml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ K8S_FOLLOWER_NS }}
+  labels:
+    name: {{ K8S_FOLLOWER_NS }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ K8S_FOLLOWER_SVC_ACCT }}
+  namespace: {{ K8S_FOLLOWER_NS }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: conjur-authenticator
+rules:
+- apiGroups: [""]
+  resources: ["pods", "serviceaccounts"]
+  verbs: ["get", "list"]
+- apiGroups: ["extensions"]
+  resources: [ "deployments", "replicasets"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: [ "deployments", "statefulsets", "replicasets"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create", "get"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: conjur-authenticator
+subjects:
+- kind: ServiceAccount
+  name: {{ K8S_FOLLOWER_SVC_ACCT }}
+  namespace: {{ K8S_FOLLOWER_NS }}
+roleRef:
+  kind: ClusterRole
+  name: conjur-authenticator
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ K8S_FOLLOWER_NS }}
+  name: {{ K8S_FOLLOWER_APP_LABEL }}
+  labels:
+    app: {{ K8S_FOLLOWER_APP_LABEL }}
+spec:
+  ports:
+  - port: 443
+    name: https
+  selector:
+    app: {{ K8S_FOLLOWER_APP_LABEL }}
+

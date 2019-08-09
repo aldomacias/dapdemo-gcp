@@ -1,0 +1,36 @@
+---
+# Filename: policy_for_authenticator_identities.yml
+# This policy defines a layer of whitelisted identities permitted to authenticate to the authn-k8s endpoint.
+- !policy
+  id: conjur/authn-k8s/gke-dev/apps
+  owner: !group devops
+  annotations:
+    description: Identities permitted to authenticate
+  body:
+  - !layer
+    annotations:
+      description: Layer of authenticator identities permitted to call authn svc
+  - &hosts
+#    - !host
+#      id: test-app-secretless/*/*
+#      annotations:
+#        kubernetes/authentication-container-name: secretless
+#        kubernetes: "true"
+    - !host
+      id: test-app-secretless/service_account/test-app-secretless
+      annotations:
+        kubernetes/authentication-container-name: secretless
+        kubernetes: "true"
+#    - !host
+#      id: test-app-sidecar/*/*
+#      annotations:
+#        kubernetes/authentication-container-name: authenticator
+#        kubernetes: "true"
+    - !host
+      id: test-app-sidecar/service_account/test-app-sidecar
+      annotations:
+        kubernetes/authentication-container-name: authenticator
+        kubernetes: "true"
+  - !grant
+    role: !layer
+    members: *hosts

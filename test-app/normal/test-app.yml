@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-app
+  labels:
+    app: test-app
+spec:
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: test-app
+  type: LoadBalancer
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: test-app
+  name: test-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+    spec:
+      containers:
+      - image: {{ TEST_APP_DOCKER_IMAGE }}
+        imagePullPolicy: Always
+        name: test-app
+        ports:
+        - containerPort: 8080
+        env:
+          - name: DB_URL
+            value: postgresql://test-app-backend.{{ TEST_APP_NAMESPACE_NAME }}.svc.cluster.local:5432/postgres
+          - name: DB_USERNAME
+            value: test_app
+          - name: DB_PASSWORD
+            value: 5b3e5f75cb3cdc725fe40318
+#      imagePullSecrets:
+#        - name: dockerpullsecret

@@ -1,0 +1,31 @@
+---
+- !policy
+  id: test-app-sidecar
+  owner: !group devops
+  annotations:
+    description: This policy connects authn identities to an application identity. It defines a layer named for an application that contains the whitelisted identities that can authenticate to the authn-k8s endpoint. Any permissions granted to the application layer will be inherited by the whitelisted authn identities, thereby granting access to the authenticated identity.
+  body:
+  - !layer
+
+ # add authn identities to application layer so authn roles inherit app's permissions
+  - !grant
+    role: !layer
+    members:
+    - !layer /conjur/authn-k8s/{{ DAP_AUTHN_K8S_BRANCH }}/apps
+
+- !policy
+  id: test-app-sidecar-db
+  owner: !group devops
+  annotations:
+    description: This policy contains the creds to access the summon app DB
+
+  body:
+    - &sidecar-variables
+      - !variable db-username
+      - !variable url
+      - !variable db-password
+
+    - !permit
+      role: !layer /test-app-sidecar
+      privileges: [ read, execute ]
+      resources: *sidecar-variables
